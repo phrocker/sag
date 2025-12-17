@@ -168,3 +168,23 @@ mvn test
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration. The pipeline runs on every push and pull request to the main branch.
+
+## Troubleshooting
+
+### Build Failures: Duplicate Class Errors
+
+If you encounter errors like:
+```
+[ERROR] duplicate class: com.sentrius.sag.SAGBaseVisitor
+[ERROR] duplicate class: com.sentrius.sag.SAGParser
+```
+
+This typically indicates that ANTLR-generated files from `target/generated-sources/antlr4/` have been accidentally copied into your `src/` directory. 
+
+**Solution:**
+1. Run `mvn clean` to remove all generated files
+2. Delete any manually created copies of `SAGBaseVisitor.java`, `SAGParser.java`, `SAGLexer.java`, or `SAGVisitor.java` from your `src/main/java/` directory
+3. Do not create custom evaluators that extend `SAGBaseVisitor` in the `src/` tree. Instead, use the existing visitor pattern (see `SAGModelVisitor` as an example)
+4. Run `mvn compile` to regenerate ANTLR files in the correct location (`target/generated-sources/`)
+
+**Note:** The `target/` directory is gitignored and should never be committed. ANTLR files are automatically generated during the build process.
