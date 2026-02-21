@@ -76,6 +76,24 @@ class RecallStatement(Statement):
 
 
 @dataclass(frozen=True)
+class SubscribeStatement(Statement):
+    topic: str = ""
+    filter_expr: Optional[Any] = None
+
+
+@dataclass(frozen=True)
+class UnsubscribeStatement(Statement):
+    topic: str = ""
+
+
+@dataclass(frozen=True)
+class KnowledgeStatement(Statement):
+    topic: str = ""
+    value: Any = None
+    version: int = 0
+
+
+@dataclass(frozen=True)
 class Message:
     header: Header = None
     statements: list[Statement] = field(default_factory=list)

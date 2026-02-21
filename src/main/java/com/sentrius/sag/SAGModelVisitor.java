@@ -170,6 +170,37 @@ public class SAGModelVisitor extends SAGBaseVisitor<Object> {
     }
 
     @Override
+    public Statement visitSubStmt(SAGParser.SubStmtContext ctx) {
+        String topic = extractTopic(ctx.topicExpr());
+        String filterExpr = null;
+        if (ctx.expr() != null) {
+            filterExpr = ctx.expr().getText();
+        }
+        return new SubscribeStatement(topic, filterExpr);
+    }
+
+    @Override
+    public Statement visitUnsubStmt(SAGParser.UnsubStmtContext ctx) {
+        String topic = extractTopic(ctx.topicExpr());
+        return new UnsubscribeStatement(topic);
+    }
+
+    @Override
+    public Statement visitKnowStmt(SAGParser.KnowStmtContext ctx) {
+        String topic = extractTopic(ctx.topicExpr());
+        Object value = visit(ctx.value());
+        int version = Integer.parseInt(ctx.INT().getText());
+        return new KnowledgeStatement(topic, value, version);
+    }
+
+    private String extractTopic(SAGParser.TopicExprContext ctx) {
+        if (ctx.TOPIC_PATTERN() != null) {
+            return ctx.TOPIC_PATTERN().getText();
+        }
+        return ctx.IDENT().getText();
+    }
+
+    @Override
     public Object visitValString(SAGParser.ValStringContext ctx) {
         return unquote(ctx.STRING().getText());
     }

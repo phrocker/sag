@@ -81,6 +81,12 @@ public class MessageMinifier {
             return minifyFold((FoldStatement) stmt);
         } else if (stmt instanceof RecallStatement) {
             return minifyRecall((RecallStatement) stmt);
+        } else if (stmt instanceof SubscribeStatement) {
+            return minifySubscribe((SubscribeStatement) stmt);
+        } else if (stmt instanceof UnsubscribeStatement) {
+            return minifyUnsubscribe((UnsubscribeStatement) stmt);
+        } else if (stmt instanceof KnowledgeStatement) {
+            return minifyKnowledge((KnowledgeStatement) stmt);
         }
         return "";
     }
@@ -205,6 +211,23 @@ public class MessageMinifier {
 
     private static String minifyRecall(RecallStatement recall) {
         return "RECALL " + recall.getFoldId();
+    }
+
+    private static String minifySubscribe(SubscribeStatement sub) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SUB ").append(sub.getTopic());
+        if (sub.getFilterExpr() != null) {
+            sb.append(" WHERE ").append(sub.getFilterExpr());
+        }
+        return sb.toString();
+    }
+
+    private static String minifyUnsubscribe(UnsubscribeStatement unsub) {
+        return "UNSUB " + unsub.getTopic();
+    }
+
+    private static String minifyKnowledge(KnowledgeStatement know) {
+        return "KNOW " + know.getTopic() + " = " + minifyValue(know.getValue()) + " v " + know.getVersion();
     }
 
     private static String minifyValue(Object value) {

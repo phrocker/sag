@@ -22,7 +22,10 @@ statement   : actionStmt
             | eventStmt
             | errorStmt
             | foldStmt
-            | recallStmt ;
+            | recallStmt
+            | subStmt
+            | unsubStmt
+            | knowStmt ;
 
 // Action with Reason and Policy
 actionStmt  : 'DO' WS verbCall (WS policyClause)? (WS priorityClause)? (WS reasonClause)? ;
@@ -46,6 +49,11 @@ errorStmt    : 'ERR' WS IDENT (WS STRING)? ;
 
 foldStmt     : 'FOLD' WS IDENT WS STRING (WS 'STATE' WS object)? ;
 recallStmt   : 'RECALL' WS IDENT ;
+
+subStmt      : 'SUB' WS topicExpr (WS 'WHERE' WS expr)? ;
+unsubStmt    : 'UNSUB' WS topicExpr ;
+knowStmt     : 'KNOW' WS topicExpr WS '=' WS value WS 'v' WS INT ;
+topicExpr    : TOPIC_PATTERN | IDENT ;
 
 policyClause : 'P:' IDENT (':' expr)? ;
 priorityClause : 'PRIO=' PRIORITY ;
@@ -83,6 +91,7 @@ PRIORITY    : 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL' ;
 BOOL        : 'true' | 'false' ;
 INT         : [0-9]+ ;
 FLOAT       : [0-9]+ '.' [0-9]+ ;
+TOPIC_PATTERN : [a-zA-Z] [a-zA-Z0-9_.-]* '.' ('**' | '*') ;
 IDENT       : [a-zA-Z] [a-zA-Z0-9_.-]* ;
 STRING      : '"' (~["\\] | '\\' .)* '"' ;
 WS          : [ \t]+ ;
