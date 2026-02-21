@@ -1,0 +1,46 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up JDK 17 (for ANTLR)
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Install dependencies
+      working-directory: python-sag
+      run: |
+        python -m pip install --upgrade pip
+        pip install antlr4-python3-runtime==4.13.1 pytest ruff antlr4-tools
+
+    - name: Generate ANTLR files
+      working-directory: python-sag
+      run: make generate
+
+    - name: Lint with ruff
+      working-directory: python-sag
+      run: ruff check src/ tests/ || true
+
+    - name: Run tests
+      working-directory: python-sag
+      run: python -m pytest tests/ -v

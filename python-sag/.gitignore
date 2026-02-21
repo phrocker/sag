@@ -1,0 +1,32 @@
+# ANTLR generated files
+src/sag/generated/*.py
+src/sag/generated/*.interp
+src/sag/generated/*.tokens
+src/sag/generated/SAG.g4
+!src/sag/generated/__init__.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# pytest
+.pytest_cache/
+
+# ruff
+.ruff_cache/
