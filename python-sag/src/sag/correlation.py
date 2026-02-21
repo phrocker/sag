@@ -92,5 +92,13 @@ class CorrelationEngine:
                     tree[correlation_id].append(msg_id)
         return tree
 
+    def get_state(self) -> dict[str, str]:
+        """Export correlation map for snapshotting."""
+        return dict(self._correlation_map)
+
+    def load_state(self, correlation_map: dict[str, str]) -> None:
+        """Restore correlation map from a snapshot."""
+        self._correlation_map = dict(correlation_map)
+
     def clear(self) -> None:
         self._correlation_map.clear()

@@ -42,9 +42,11 @@ python bench/benchmarks/roundtrip_fidelity.py  # Fold -> unfold -> diff
 ### Demo
 ```bash
 cd demo
-python demo.py --no-api                        # Echo mode (no API key needed)
-python demo.py --api-key <key>                 # With Claude API
+python demo.py --no-api                        # Chatbot echo mode (no API key needed)
+python demo.py --api-key <key>                 # Chatbot with Claude API
 python demo.py --budget 5000 --threshold 0.5   # Custom memory settings
+python tree_demo.py --no-api "Build a REST API"                  # Grove echo mode
+python tree_demo.py --api-key <key> "Build a REST API"           # Grove with Claude
 ```
 
 ## Architecture
@@ -64,10 +66,13 @@ Raw SAG text flows through: `SAGMessageParser.parse()` → ANTLR4 lexer/parser (
 - **Fold Protocol** (`FoldStatement`, `RecallStatement`, `FoldEngine`): Grammar-level fold/unfold for context compression. `FOLD <id> "summary" [STATE {...}]` and `RECALL <id>`. 100% roundtrip fidelity.
 - **Prompt Builder** (`PromptBuilder`, `SAGGenerator`): Generates LLM system prompts from embedded EBNF grammar + schema docs. `SAGGenerator` wraps any `LLMClient` with a parse-validate-retry loop.
 - **Schema Profiles** (`SoftwareDevProfile`): Pre-built `SchemaRegistry` with 12 CI/CD verbs (build, test, deploy, rollback, review, merge, lint, scan, release, provision, monitor, migrate).
+- **Knowledge Engine** (`KnowledgeEngine`, `topic_matches`): Per-agent versioned fact store with topic-based subscriptions, wildcard matching (`*`, `**`), delta propagation via version vectors, and auto-fold when exceeding knowledge budget.
+- **Tree Engine** (`AgentNode`, `TreeEngine`): Agent tree topology management. Each node has its own `KnowledgeEngine` + `CorrelationEngine`. Supports bottom-up traversal, parent-child knowledge propagation, and ASCII rendering.
+- **Grove** (`Grove`, `AgentRunner`, `LLMAgentRunner`, `EchoAgentRunner`, `GroveResult`): Multi-agent tree orchestrator. Executes agents bottom-up, propagates knowledge via SAG messages (with proper headers and KNOW statements), and aggregates results. `AgentRunner` protocol allows swapping LLM/echo/custom backends. Callback hooks for UI observation.
 
 ### Data Model
 
-`Statement` has eight implementations: `ActionStatement`, `QueryStatement`, `AssertStatement`, `ControlStatement`, `EventStatement`, `ErrorStatement`, `FoldStatement`, `RecallStatement`. `Message` owns a `Header` and `List<Statement>`. Java uses immutable POJOs; Python uses frozen dataclasses.
+`Statement` has eleven implementations: `ActionStatement`, `QueryStatement`, `AssertStatement`, `ControlStatement`, `EventStatement`, `ErrorStatement`, `FoldStatement`, `RecallStatement`, `SubscribeStatement`, `UnsubscribeStatement`, `KnowledgeStatement`. `Message` owns a `Header` and `List<Statement>`. Java uses immutable POJOs; Python uses frozen dataclasses.
 
 ### Package Layout
 
@@ -84,6 +89,9 @@ Raw SAG text flows through: `SAGMessageParser.parse()` → ANTLR4 lexer/parser (
 - `minifier.py`, `correlation.py` — serialization + threading
 - `sanitizer.py` — four-layer firewall
 - `fold.py` — fold/unfold engine
+- `knowledge.py` — knowledge propagation engine
+- `tree.py` — agent tree topology (`AgentNode`, `TreeEngine`)
+- `grove.py` — multi-agent orchestrator (`Grove`, runners, `GroveResult`)
 - `prompt.py` — LLM prompt builder + validate-retry generator
 - `profiles/software_dev.py` — pre-built verb schemas
 
@@ -91,5 +99,5 @@ Raw SAG text flows through: `SAGMessageParser.parse()` → ANTLR4 lexer/parser (
 - `/` — Java library (Maven)
 - `python-sag/` — Python library (pip-installable)
 - `bench/` — Benchmarking harness (reads from `bench/fixtures/conversations.py`)
-- `demo/` — Live chatbot demo with TUI
+- `demo/` — Live chatbot demo + grove multi-agent demo with TUI
 - `.github/workflows/` — CI for Java + Python

@@ -6,10 +6,13 @@ from sag.model import (
     EventStatement,
     FoldStatement,
     Header,
+    KnowledgeStatement,
     Message,
     QueryStatement,
     RecallStatement,
     Statement,
+    SubscribeStatement,
+    UnsubscribeStatement,
 )
 from sag.parser import SAGMessageParser
 from sag.exceptions import SAGParseException
@@ -34,8 +37,22 @@ from sag.sanitizer import (
     ValidationError,
 )
 from sag.fold import FoldEngine
+from sag.knowledge import KnowledgeEngine, topic_matches
 from sag.profiles import SoftwareDevProfile
 from sag.prompt import GenerationResult, LLMClient, PromptBuilder, SAGGenerator
+from sag.tree import AgentNode, TreeEngine
+from sag.grove import (
+    AgentRunner,
+    ChatResponse,
+    ChatSession,
+    EchoAgentRunner,
+    Grove,
+    GroveResult,
+    InteractiveGrove,
+    LLMAgentRunner,
+    StepResult,
+)
+from sag.checkpoint import CheckpointManager, CheckpointMeta, NodeSnapshot
 
 __all__ = [
     "SAGMessageParser",
@@ -71,9 +88,28 @@ __all__ = [
     "ErrorStatement",
     "FoldStatement",
     "RecallStatement",
+    "SubscribeStatement",
+    "UnsubscribeStatement",
+    "KnowledgeStatement",
+    "KnowledgeEngine",
+    "topic_matches",
     "SoftwareDevProfile",
     "PromptBuilder",
     "SAGGenerator",
     "GenerationResult",
     "LLMClient",
+    "AgentNode",
+    "TreeEngine",
+    "AgentRunner",
+    "EchoAgentRunner",
+    "LLMAgentRunner",
+    "Grove",
+    "GroveResult",
+    "InteractiveGrove",
+    "StepResult",
+    "ChatSession",
+    "ChatResponse",
+    "CheckpointManager",
+    "CheckpointMeta",
+    "NodeSnapshot",
 ]

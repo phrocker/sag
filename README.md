@@ -1,4 +1,4 @@
-# SAG - Sentrius Agent Grammar
+# SAG - Multi Agent Grammar System
 
 A purpose-built protocol for structured inter-agent communication. Parse, validate, correlate, and compress multi-agent conversations — without an LLM in the loop.
 
@@ -68,13 +68,17 @@ One header, multiple typed statements, each deterministically parseable by an AN
 
 ## What You Get
 
-**Parse once, use everywhere.** A single ANTLR grammar (`SAG.g4`) generates typed model objects in Java and Python with full feature parity. 146 Java tests, 179 Python tests.
+**Parse once, use everywhere.** A single ANTLR grammar (`SAG.g4`) generates typed model objects in Java and Python with full feature parity. 146 Java tests, 346 Python tests.
 
 **Validate without an LLM.** A four-layer sanitizer pipeline — grammar parse, routing guard, schema validation, guardrail check — catches malformed, misrouted, or unauthorized messages before they reach your agents. No model calls required.
 
 **Track causality.** The correlation engine manages message IDs, parent threading, and conversation tree building automatically. Trace any message back through its full causal chain across agents.
 
 **Compress without loss.** The fold protocol collapses completed conversation segments into compact summaries with preserved state. Unfold recovers the originals exactly. In benchmarks: 82-98% compression, 100% fidelity, 8.8x more conversation turns before context exhaustion.
+
+**Share knowledge across agents.** The knowledge engine manages versioned facts with topic-based subscriptions and delta propagation. Agents subscribe to topics with wildcard patterns, and only new facts flow across — no redundant transfers.
+
+**Orchestrate agent trees.** The Grove framework organizes agents into hierarchical trees and executes them bottom-up. All inter-agent communication uses SAG messages on the wire — proper headers, correlation IDs, and KNOW statements. Plug in any execution backend (LLM, echo, custom) via the `AgentRunner` protocol.
 
 ## Benchmark Results
 
@@ -118,14 +122,34 @@ mvn clean install    # Build + test (146 tests)
 cd python-sag
 python -m venv .venv && source .venv/bin/activate
 pip install antlr4-python3-runtime==4.13.1 pytest antlr4-tools
-make generate && make test    # Generate ANTLR + run 179 tests
+make generate && make test    # Generate ANTLR + run 346 tests
 ```
 
-### Demo
+### Demos
+
+All demos run from the `demo/` directory and work in echo mode (`--no-api`) or with a live LLM (`--api-key`).
+
 ```bash
 cd demo
-python demo.py --no-api                    # Echo mode
-python demo.py --api-key $ANTHROPIC_API_KEY  # With Claude
+```
+
+**Chatbot** — Single-agent conversational loop with SAG message parsing, fold/unfold context compression, and memory management. Type messages and watch SAG wire format in real time.
+```bash
+python demo.py --no-api
+python demo.py --api-key $ANTHROPIC_API_KEY
+```
+
+**Grove** — Multi-agent tree execution. Ten agents organized into a three-level hierarchy (leaf specialists → team leads → PM) process a task bottom-up in one shot. Knowledge propagates upward via SAG KNOW statements.
+```bash
+python tree_demo.py --no-api "Build a REST API"
+python tree_demo.py --api-key $ANTHROPIC_API_KEY "Build a REST API"
+```
+
+**Interactive Grove** — Same agent tree, but you control the pace. Step mode pauses between each level so you can inspect node state, edit facts, and checkpoint/rollback. Chat mode runs the full grove first, then opens a conversational loop with the root agent to refine results.
+```bash
+python interactive_demo.py --no-api --mode step "Build a REST API"
+python interactive_demo.py --no-api --mode chat "Build a REST API"
+python interactive_demo.py --api-key $ANTHROPIC_API_KEY --mode chat "Build a REST API"
 ```
 
 #### Demo Example
@@ -180,6 +204,101 @@ engine = FoldEngine()
 fold = engine.fold(messages, "Completed onboarding flow")
 # Later...
 original = engine.unfold(fold.fold_id)  # 100% fidelity
+```
+
+### Knowledge Propagation
+```python
+from sag import KnowledgeEngine
+
+# Each agent has its own knowledge engine
+agent_a = KnowledgeEngine("agent-a")
+agent_b = KnowledgeEngine("agent-b")
+
+# Agent B subscribes to agent A's system facts
+agent_a.add_subscriber("agent-b", "system.**")
+
+# Agent A asserts facts
+agent_a.assert_fact("system.cpu", 85)
+agent_a.assert_fact("system.mem", 70)
+
+# Compute delta — only new facts matching B's subscription
+delta = agent_a.compute_delta("agent-b")
+applied = agent_b.apply_incoming(delta, "agent-a")
+# agent_b now has system.cpu=85, system.mem=70
+```
+
+Topic patterns support wildcards: `system.*` (single level), `system.**` (multi-level), `**` (everything).
+
+### Grove — Multi-Agent Tree Orchestration
+
+The Grove framework organizes agents into a tree and executes them bottom-up. Leaf agents analyze first, middle agents synthesize, and the root produces the final result. All inter-agent communication uses SAG messages with proper headers and KNOW statements.
+
+```python
+from sag import TreeEngine, Grove, EchoAgentRunner
+
+# Build a tree
+tree = TreeEngine()
+tree.add_root("pm", "Project Manager", prompt="Synthesize reports", topics=["project.plan"])
+tree.add_child("pm", "eng", "Engineer", prompt="Design architecture", topics=["eng.design"])
+tree.add_child("pm", "qa", "QA Lead", prompt="Plan testing", topics=["qa.strategy"])
+
+# Execute with echo runner (or LLMAgentRunner for real LLM calls)
+grove = Grove(tree, EchoAgentRunner())
+result = grove.execute("Build a REST API")
+
+print(f"Agents run: {result.agents_run}")
+print(f"SAG messages exchanged: {len(result.messages)}")
+for topic, (value, version) in result.facts.items():
+    print(f"  {topic}: {value}")
+```
+
+The `AgentRunner` protocol lets you swap execution backends — `LLMAgentRunner` for Claude/OpenAI, `EchoAgentRunner` for testing, or any custom implementation. Callback hooks (`on_agent_start`, `on_agent_done`, `on_propagate`) let you observe execution without coupling to a UI.
+
+#### Interactive Mode — Step-Through with Checkpointing
+
+`InteractiveGrove` processes one level at a time, letting you inspect state, edit facts, and checkpoint/rollback between steps:
+
+```python
+from sag import TreeEngine, InteractiveGrove, EchoAgentRunner, CheckpointManager
+
+tree = TreeEngine()
+tree.add_root("pm", "PM", topics=["project.plan"])
+tree.add_child("pm", "eng", "Engineer", topics=["eng.design"])
+
+mgr = CheckpointManager("/tmp/checkpoints")
+ig = InteractiveGrove(tree, EchoAgentRunner(), checkpoint_mgr=mgr)
+ig.setup("Build a REST API")
+
+step = ig.step()                         # Process leaves
+print(step.agents_run, step.is_complete) # ['eng'], False
+ig.inspect_node("eng")                   # View eng's facts
+cp_id = ig.checkpoint()                  # Save state to disk
+
+ig.edit_fact("eng", "eng.design", "revised plan")  # Manual intervention
+ig.rollback(cp_id)                                 # Undo changes
+
+result = ig.complete()                   # Run remaining levels
+```
+
+#### Chat Mode — Refine Results Conversationally
+
+`ChatSession` provides a conversational loop with the root agent after an initial grove execution:
+
+```python
+from sag import ChatSession
+
+session = ChatSession(result, tree, EchoAgentRunner(), checkpoint_mgr=mgr)
+resp = session.chat("Can you improve the API design?")
+print(resp.facts_updated)   # Topics the root agent updated
+cp_id = session.checkpoint()
+session.chat("Actually, add caching too")
+session.rollback(cp_id)     # Undo the last chat turn
+```
+
+Each propagation step produces a real SAG message on the wire:
+```
+H v 1 id=eng-42 src=eng dst=pm ts=1700000000
+KNOW eng.design = "Microservice architecture with 5 endpoints" v 1
 ```
 
 ### Schema Profiles
@@ -341,6 +460,9 @@ Use `SoftwareDevProfile.get_verbs()` / `SoftwareDevProfile.getVerbs()` to intros
 | Error     | `ERR code "message"` | Report errors |
 | Fold      | `FOLD id "summary" [STATE {...}]` | Compress context |
 | Recall    | `RECALL id` | Restore context |
+| Subscribe | `SUB pattern [WHERE filter]` | Subscribe to topics |
+| Unsubscribe | `UNSUB pattern` | Unsubscribe |
+| Knowledge | `KNOW topic = value v N` | Share versioned facts |
 
 ## Project Structure
 
@@ -350,9 +472,17 @@ Use `SoftwareDevProfile.get_verbs()` / `SoftwareDevProfile.getVerbs()` to intros
 ├── src/main/java/...             Java implementation
 │   └── .../profiles/             Schema profiles (Java)
 ├── python-sag/                   Python library (pip-installable)
-│   └── src/sag/profiles/        Schema profiles (Python)
+│   └── src/sag/
+│       ├── tree.py               Agent tree topology
+│       ├── grove.py              Multi-agent orchestrator + InteractiveGrove + ChatSession
+│       ├── checkpoint.py         Grove state checkpointing
+│       ├── knowledge.py          Knowledge propagation engine
+│       └── profiles/             Schema profiles (Python)
 ├── bench/                        Benchmarking harness
-├── demo/                         Live chatbot demo
+├── demo/
+│   ├── demo.py                   Live chatbot demo
+│   ├── tree_demo.py              Grove multi-agent demo
+│   └── interactive_demo.py       Interactive step-through + chat demo
 └── .github/workflows/            CI for Java + Python
 ```
 
@@ -360,4 +490,4 @@ Use `SoftwareDevProfile.get_verbs()` / `SoftwareDevProfile.getVerbs()` to intros
 
 GitHub Actions runs on every push/PR:
 - **Java**: JDK 17, Maven build, 146 tests
-- **Python**: Python 3.10-3.12 matrix, ANTLR generation, ruff lint, 179 tests
+- **Python**: Python 3.10-3.12 matrix, ANTLR generation, ruff lint, 346 tests
