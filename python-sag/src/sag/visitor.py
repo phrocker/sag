@@ -10,10 +10,13 @@ from sag.model import (
     EventStatement,
     FoldStatement,
     Header,
+    KnowledgeStatement,
     Message,
     QueryStatement,
     RecallStatement,
     Statement,
+    SubscribeStatement,
+    UnsubscribeStatement,
 )
 
 
@@ -159,6 +162,28 @@ class SAGModelVisitor(SAGVisitor):
     def visitRecallStmt(self, ctx: SAGParser.RecallStmtContext) -> Statement:
         fold_id = ctx.IDENT().getText()
         return RecallStatement(fold_id=fold_id)
+
+    def visitSubStmt(self, ctx: SAGParser.SubStmtContext) -> Statement:
+        topic = self._extract_topic(ctx.topicExpr())
+        filter_expr = None
+        if ctx.expr() is not None:
+            filter_expr = ctx.expr().getText()
+        return SubscribeStatement(topic=topic, filter_expr=filter_expr)
+
+    def visitUnsubStmt(self, ctx: SAGParser.UnsubStmtContext) -> Statement:
+        topic = self._extract_topic(ctx.topicExpr())
+        return UnsubscribeStatement(topic=topic)
+
+    def visitKnowStmt(self, ctx: SAGParser.KnowStmtContext) -> Statement:
+        topic = self._extract_topic(ctx.topicExpr())
+        value = self.visit(ctx.value())
+        version = int(ctx.INT().getText())
+        return KnowledgeStatement(topic=topic, value=value, version=version)
+
+    def _extract_topic(self, ctx) -> str:
+        if ctx.TOPIC_PATTERN() is not None:
+            return ctx.TOPIC_PATTERN().getText()
+        return ctx.IDENT().getText()
 
     def _visit_object_rule(self, ctx) -> dict:
         result = {}

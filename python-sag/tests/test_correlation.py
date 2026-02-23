@@ -97,6 +97,42 @@ def test_build_conversation_tree():
     assert "msg4" in tree["msg2"]
 
 
+def test_get_state():
+    engine = CorrelationEngine("agent1")
+    msg = Message(
+        header=Header(version=1, message_id="msg1", source="agent2", destination="agent1", timestamp=1000),
+        statements=[],
+    )
+    engine.record_incoming(msg)
+
+    state = engine.get_state()
+    assert state == {"last_received": "msg1"}
+    # Returned dict is a copy
+    state["extra"] = "x"
+    assert "extra" not in engine.get_state()
+
+
+def test_load_state():
+    engine = CorrelationEngine("agent1")
+    engine.load_state({"last_received": "msg42"})
+
+    header = engine.create_response_header("agent1", "agent2")
+    assert header.correlation == "msg42"
+
+
+def test_load_state_replaces():
+    engine = CorrelationEngine("agent1")
+    msg = Message(
+        header=Header(version=1, message_id="msg1", source="agent2", destination="agent1", timestamp=1000),
+        statements=[],
+    )
+    engine.record_incoming(msg)
+    engine.load_state({"last_received": "msg99"})
+
+    header = engine.create_response_header("agent1", "agent2")
+    assert header.correlation == "msg99"
+
+
 def test_clear():
     engine = CorrelationEngine("agent1")
 

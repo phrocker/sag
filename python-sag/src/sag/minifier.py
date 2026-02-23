@@ -9,10 +9,13 @@ from sag.model import (
     ErrorStatement,
     EventStatement,
     FoldStatement,
+    KnowledgeStatement,
     Message,
     QueryStatement,
     RecallStatement,
     Statement,
+    SubscribeStatement,
+    UnsubscribeStatement,
 )
 
 
@@ -107,6 +110,12 @@ def _minify_statement(stmt: Statement) -> str:
         return _minify_fold(stmt)
     elif isinstance(stmt, RecallStatement):
         return _minify_recall(stmt)
+    elif isinstance(stmt, SubscribeStatement):
+        return _minify_subscribe(stmt)
+    elif isinstance(stmt, UnsubscribeStatement):
+        return _minify_unsubscribe(stmt)
+    elif isinstance(stmt, KnowledgeStatement):
+        return _minify_knowledge(stmt)
     return ""
 
 
@@ -198,6 +207,21 @@ def _minify_fold(fold: FoldStatement) -> str:
 
 def _minify_recall(recall: RecallStatement) -> str:
     return f"RECALL {recall.fold_id}"
+
+
+def _minify_subscribe(sub: SubscribeStatement) -> str:
+    result = f"SUB {sub.topic}"
+    if sub.filter_expr is not None:
+        result += f" WHERE {sub.filter_expr}"
+    return result
+
+
+def _minify_unsubscribe(unsub: UnsubscribeStatement) -> str:
+    return f"UNSUB {unsub.topic}"
+
+
+def _minify_knowledge(know: KnowledgeStatement) -> str:
+    return f"KNOW {know.topic} = {_minify_value(know.value)} v {know.version}"
 
 
 def _minify_value(value: Any) -> str:
