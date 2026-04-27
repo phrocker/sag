@@ -30,3 +30,6 @@ venv/
 
 # ruff
 .ruff_cache/
+
+# Agent / grove run artifacts
+output/

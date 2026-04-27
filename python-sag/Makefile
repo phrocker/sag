@@ -1,4 +1,4 @@
-.PHONY: generate test lint build clean
+.PHONY: generate test lint build publish publish-test publish-build-only clean
 
 PYTHON ?= $(shell [ -f .venv/bin/python3 ] && echo .venv/bin/python3 || echo python3)
 GRAMMAR_SRC := ../src/main/antlr4/SAG.g4
@@ -22,6 +22,15 @@ lint:
 
 build:
 	$(PYTHON) -m build
+
+publish:
+	./publish.sh
+
+publish-test:
+	./publish.sh --test
+
+publish-build-only:
+	./publish.sh --build-only --no-bump
 
 clean:
 	rm -rf $(GENERATED_DIR)/*.py $(GENERATED_DIR)/*.interp $(GENERATED_DIR)/*.tokens $(GENERATED_DIR)/SAG.g4

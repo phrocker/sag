@@ -3,10 +3,28 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sag"
-version = "1.0.0"
-description = "Semantic Action Grammar - Python parsing library for structured inter-agent communication"
+name = "semantic-action-grammar"
+version = "1.0.1"
+description = "Semantic Action Grammar — a DSL for structured inter-agent communication, with parsing, validation, correlation, and fold-based context compression."
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
+authors = [
+    { name = "Marc Parisi", email = "marc.parisi@gmail.com" },
+]
+keywords = ["sag", "agent", "grammar", "antlr", "dsl", "llm", "multi-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Compilers",
+]
 dependencies = [
     "antlr4-python3-runtime==4.13.1",
 ]
@@ -16,9 +34,45 @@ dev = [
     "pytest>=7.0",
     "ruff>=0.1.0",
 ]
+publish = [
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/phrocker/sag"
+Repository = "https://github.com/phrocker/sag"
+Issues = "https://github.com/phrocker/sag/issues"
+
+[tool.hatch.build]
+# ANTLR-generated parser is gitignored but MUST ship in the distribution.
+artifacts = [
+    "src/sag/generated/*.py",
+    "src/sag/generated/*.tokens",
+    "src/sag/generated/*.interp",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sag"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/sag",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+    "Makefile",
+    "requirements.txt",
+]
+exclude = [
+    "output",
+    "tests",
+    ".venv",
+    ".pytest_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
