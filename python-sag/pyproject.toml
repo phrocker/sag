@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "semantic-action-grammar"
-version = "1.2.0"
+version = "1.2.1"
 description = "Semantic Action Grammar — a DSL for structured inter-agent communication, with parsing, validation, correlation, and fold-based context compression."
 readme = "README.md"
 license = { file = "LICENSE" }

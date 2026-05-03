@@ -154,6 +154,64 @@ class TreeEngine:
             for child in node.children:
                 child.knowledge.add_subscriber(node.agent_id, pattern)
 
+    # -- Dynamic topology --
+
+    def graft(
+        self, parent_id: str, agent_id: str, role: str, **metadata: Any
+    ) -> AgentNode:
+        """Attach a new child node and wire the parent as a subscriber.
+
+        Like `add_child`, but also subscribes the parent to all facts
+        on the new node so propagation works without a separate
+        `setup_subscriptions` call.
+        """
+        node = self.add_child(parent_id, agent_id, role, **metadata)
+        node.knowledge.add_subscriber(parent_id, "**")
+        return node
+
+    def prune(
+        self,
+        agent_id: str,
+        fold_engine: Optional[Any] = None,
+    ) -> dict[str, tuple[Any, int]]:
+        """Remove a node from the tree.
+
+        Children are reparented to the pruned node's parent. The
+        node's facts are propagated to the parent before removal so
+        knowledge isn't lost. If `fold_engine` is given, the extracted
+        facts are recorded as a fold for later recall.
+
+        Returns the dict of facts that were on the pruned node, keyed
+        by topic.
+        """
+        node = self._nodes.get(agent_id)
+        if node is None:
+            raise KeyError(f"Node '{agent_id}' not found")
+        if node.is_root:
+            raise ValueError("Cannot prune the root")
+
+        parent = node.parent
+        facts = node.knowledge.get_all_facts()
+
+        for topic, (value, _version) in facts.items():
+            parent.knowledge.assert_fact(topic, value)
+
+        if fold_engine is not None:
+            fold_engine.fold(
+                [],
+                f"Pruned agent '{agent_id}' ({node.role})",
+                state={"facts": {t: v for t, (v, _) in facts.items()}},
+            )
+
+        for child in node.children:
+            child.parent = parent
+            parent.children.append(child)
+
+        parent.children.remove(node)
+        del self._nodes[agent_id]
+
+        return facts
+
     # -- Visualization --
 
     def render_ascii(self) -> str:
@@ -171,6 +229,58 @@ class TreeEngine:
                 lines.append(f"{prefix}{connector}{node.role} ({node.agent_id})")
 
             child_prefix = prefix + ("    " if is_last else "\u2502   ")
+            for i, child in enumerate(node.children):
+                _render(child, child_prefix, i == len(node.children) - 1)
+
+        _render(self._root, "", True)
+        return "\n".join(lines)
+
+    def render_grove_view(
+        self,
+        active_agents: Optional[set[str]] = None,
+        fold_engine: Optional[Any] = None,
+    ) -> str:
+        """Render an ASCII tree decorated with per-node status.
+
+        Decorations applied per node:
+          - `[ACTIVE]` when the agent is in `active_agents`
+          - `[ASSERT:N]` when the node has N>0 local facts
+          - `[PRESSURE:R]` when knowledge pressure >= 0.7
+          - `[FOLDED:N]` (root only) when the supplied fold_engine
+            holds N>0 folds
+        """
+        if self._root is None:
+            return "(empty tree)"
+
+        active = active_agents or set()
+        lines: list[str] = []
+
+        def _decorations(node: AgentNode) -> str:
+            parts: list[str] = []
+            if node.agent_id in active:
+                parts.append("[ACTIVE]")
+            n_facts = node.knowledge.get_fact_count()
+            if n_facts > 0:
+                parts.append(f"[ASSERT:{n_facts}]")
+            pressure = node.knowledge.get_knowledge_pressure()
+            if pressure >= 0.7:
+                parts.append(f"[PRESSURE:{pressure:.2f}]")
+            if node.is_root and fold_engine is not None:
+                n_folds = fold_engine.get_fold_count()
+                if n_folds > 0:
+                    parts.append(f"[FOLDED:{n_folds}]")
+            return (" " + " ".join(parts)) if parts else ""
+
+        def _render(node: AgentNode, prefix: str, is_last: bool) -> None:
+            connector = "└── " if is_last else "├── "
+            decorations = _decorations(node)
+            if node.is_root:
+                lines.append(f"{node.role} ({node.agent_id}){decorations}")
+            else:
+                lines.append(
+                    f"{prefix}{connector}{node.role} ({node.agent_id}){decorations}"
+                )
+            child_prefix = prefix + ("    " if is_last else "│   ")
             for i, child in enumerate(node.children):
                 _render(child, child_prefix, i == len(node.children) - 1)
 
