@@ -80,7 +80,12 @@ value       : STRING    # valString
             | object    # valObject
             ;
 
-path        : IDENT ('.' IDENT)* ;
+// pathSeg allows an optional `:suffix` so vertex ids like `memory:abc`
+// or `rationale:hexhash` work as path heads. We do this at the parser
+// level (not by extending IDENT) to avoid breaking other grammar rules
+// that consume `:` separately (e.g. `P:label:expr` policy clauses).
+path        : pathSeg ('.' pathSeg)* ;
+pathSeg     : IDENT (':' (IDENT | INT))? ;
 list        : '[' (value (',' WS? value)*)? ']' ;
 object      : '{' (member (',' WS? member)*)? '}' ;
 member      : STRING WS? ':' WS? value ;

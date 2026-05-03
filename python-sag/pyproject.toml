@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "semantic-action-grammar"
-version = "1.0.1"
+version = "1.2.0"
 description = "Semantic Action Grammar — a DSL for structured inter-agent communication, with parsing, validation, correlation, and fold-based context compression."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -43,6 +43,9 @@ publish = [
 Homepage = "https://github.com/phrocker/sag"
 Repository = "https://github.com/phrocker/sag"
 Issues = "https://github.com/phrocker/sag/issues"
+Documentation = "https://github.com/phrocker/sag#readme"
+Grammar = "https://github.com/phrocker/sag/blob/main/src/main/antlr4/SAG.g4"
+Benchmarks = "https://github.com/phrocker/sag/tree/main/bench"
 
 [tool.hatch.build]
 # ANTLR-generated parser is gitignored but MUST ship in the distribution.

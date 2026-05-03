@@ -93,3 +93,37 @@ def test_evaluate_null_value():
 
     assert isinstance(result, bool)
     assert result is True
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 / SAG 1.2: pathSeg accepts an optional `:suffix` so vertex-id
+# style heads (memory:abc, rationale:hex123, etc.) parse as path segments.
+# ---------------------------------------------------------------------------
+
+def test_path_with_colon_prefix_greater_than():
+    context = MapContext({"memory:abc": {"confidence": 0.9}})
+    result = ExpressionEvaluator.evaluate("memory:abc.confidence > 0.5", context)
+    assert isinstance(result, bool)
+    assert result is True
+
+
+def test_path_with_colon_prefix_less_than():
+    context = MapContext({"memory:abc": {"confidence": 0.9}})
+    result = ExpressionEvaluator.evaluate("memory:abc.confidence < 0.5", context)
+    assert isinstance(result, bool)
+    assert result is False
+
+
+def test_path_with_rationale_colon_prefix():
+    context = MapContext({"rationale:hexabc": {"trust": 0.95}})
+    result = ExpressionEvaluator.evaluate(
+        "rationale:hexabc.trust >= 0.9", context
+    )
+    assert result is True
+
+
+def test_path_with_integer_suffix():
+    # `:INT` also valid for positional refs like slot:0, slot:1
+    context = MapContext({"slot:0": {"score": 0.8}})
+    result = ExpressionEvaluator.evaluate("slot:0.score > 0.5", context)
+    assert result is True
