@@ -127,3 +127,67 @@ def test_path_with_integer_suffix():
     context = MapContext({"slot:0": {"score": 0.8}})
     result = ExpressionEvaluator.evaluate("slot:0.score > 0.5", context)
     assert result is True
+
+
+# --- operator precedence ---------------------------------------------------
+#
+# ANTLR resolves left-recursive alternatives by their order in the grammar: the
+# first alternative binds most tightly. SAG.g4 originally listed them
+# loosest-first, which inverted the entire ladder — `2+3*4` evaluated to 20 and
+# `1==1&&2==2` to False — and no test noticed, because every existing case used
+# a single operator. These pin the ordering itself.
+
+
+def test_multiplication_binds_tighter_than_addition():
+    assert ExpressionEvaluator.evaluate("2+3*4", MapContext()) == 14
+    assert ExpressionEvaluator.evaluate("2*3+4", MapContext()) == 10
+
+
+def test_division_binds_tighter_than_subtraction():
+    assert ExpressionEvaluator.evaluate("10-2*3", MapContext()) == 4
+    assert ExpressionEvaluator.evaluate("10-6/2", MapContext()) == 7
+
+
+def test_parentheses_still_override_precedence():
+    assert ExpressionEvaluator.evaluate("(2+3)*4", MapContext()) == 20
+
+
+def test_comparison_binds_tighter_than_and():
+    assert ExpressionEvaluator.evaluate("1==1&&2==2", MapContext()) is True
+    assert ExpressionEvaluator.evaluate("1==1&&2==3", MapContext()) is False
+
+
+def test_arithmetic_binds_tighter_than_comparison():
+    assert ExpressionEvaluator.evaluate("1+2==3", MapContext()) is True
+
+
+def test_and_binds_tighter_than_or():
+    # Reads as true || (false && false). Under the inverted ladder this grouped
+    # as (true || false) && false and returned False.
+    assert ExpressionEvaluator.evaluate("true||false&&false", MapContext()) is True
+    assert ExpressionEvaluator.evaluate("false&&false||true", MapContext()) is True
+
+
+def test_a_realistic_guardrail_binds_as_written():
+    """The shape that makes this a security concern rather than a maths one: a
+    BECAUSE clause is the last layer of the sanitizer, so a guardrail that reads
+    correctly but binds wrongly fails with no diagnostic."""
+    context = MapContext()
+    context.set("role", "admin")
+    context.set("env", "prod")
+
+    assert ExpressionEvaluator.evaluate('role=="admin"&&env=="prod"', context) is True
+
+    context.set("env", "staging")
+    assert ExpressionEvaluator.evaluate('role=="admin"&&env=="prod"', context) is False
+
+
+def test_threshold_and_counter_guardrail():
+    context = MapContext()
+    context.set("approvals", 12)
+    context.set("rejections", 0)
+
+    assert ExpressionEvaluator.evaluate("approvals>=10&&rejections==0", context) is True
+
+    context.set("rejections", 1)
+    assert ExpressionEvaluator.evaluate("approvals>=10&&rejections==0", context) is False

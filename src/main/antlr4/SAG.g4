@@ -58,12 +58,23 @@ topicExpr    : TOPIC_PATTERN | IDENT ;
 policyClause : 'P:' IDENT (':' expr)? ;
 priorityClause : 'PRIO=' PRIORITY ;
 
-// Expression Precedence (High to Low)
-expr        : left=expr op='||' right=expr      # OrExpr
-            | left=expr op='&&' right=expr      # AndExpr
-            | left=expr op=('=='|'!='|'>'|'<'|'>='|'<=') right=expr # RelExpr
+// Expression precedence, tightest binding FIRST.
+//
+// ANTLR resolves left-recursive alternatives by their order here: the first
+// alternative binds most tightly. Listing the operators loosest-first — `||`
+// at the top, `*` at the bottom — therefore inverts the whole ladder, and did:
+// `2+3*4` evaluated to 20, `10-2*3` to 24, `true||false&&false` to false, and
+// `role=="admin"&&env=="prod"` parsed as `role==("admin"&&env)=="prod"`.
+//
+// That last shape is why this matters beyond arithmetic. A BECAUSE clause is
+// the final layer of the sanitizer, so a guardrail that reads correctly but
+// binds wrongly fails open or closed with no diagnostic. Keep multiplicative
+// first and `||` last.
+expr        : left=expr op=('*'|'/') right=expr   # MulExpr
             | left=expr op=('+'|'-') right=expr   # AddExpr
-            | left=expr op=('*'|'/') right=expr   # MulExpr
+            | left=expr op=('=='|'!='|'>'|'<'|'>='|'<=') right=expr # RelExpr
+            | left=expr op='&&' right=expr      # AndExpr
+            | left=expr op='||' right=expr      # OrExpr
             | primary                             # PrimaryExpr
             ;
 
