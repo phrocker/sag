@@ -1,0 +1,41 @@
+# Managed by Foreman: a starting configuration, not a tuned one.
+# Project-specific ignores belong here and will not be overwritten —
+# Foreman only writes this file when none exists.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      maven-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "pip"
+    directory: "/demo"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      pip-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "pip"
+    directory: "/python-sag"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      pip-dependencies:
+        patterns:
+          - "*"
